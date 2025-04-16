@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Smile, Github, Award } from 'lucide-react';
+import { Smile, Github } from 'lucide-react';
 
 const Header: React.FC = () => {
   return (
@@ -15,12 +15,8 @@ const Header: React.FC = () => {
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <div className="hidden sm:flex items-center gap-1 text-amber-500 text-xs font-medium px-2 py-1 bg-amber-500/10 rounded-full">
-          <Award size={14} />
-          <span>Diploma Project</span>
-        </div>
         <a 
-          href="https://github.com" 
+          href="https://github.com/Shauryam-singh/emoji-face-fusion-ar" 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-sm flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
