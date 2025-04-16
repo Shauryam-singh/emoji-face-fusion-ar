@@ -34,10 +34,10 @@ const EmotionDetector: React.FC<EmotionDetectorProps> = ({
         
         // Initialize the face detection model
         const model = faceDetection.SupportedModels.MediaPipeFaceDetector;
-        const detectorConfig = {
-          runtime: 'tfjs', // Use tfjs runtime
+        const detectorConfig: faceDetection.MediaPipeFaceDetectorTfjsModelConfig = {
+          runtime: 'tfjs', // Use tfjs runtime as a literal string type
           modelType: 'short', // Use the lightweight model for better performance
-          maxFaces: 1, // We only need to detect one face
+          maxFaces: 1 // We only need to detect one face
         };
         
         // Load the model
