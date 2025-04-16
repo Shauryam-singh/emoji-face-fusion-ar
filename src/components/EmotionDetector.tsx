@@ -1,7 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Emotion, emotionToDescription, emotionToEmoji, mockDetectEmotion } from '../utils/emotionUtils';
 import { Card, CardContent } from '@/components/ui/card';
-import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
+import * as faceDetection from '@tensorflow-models/face-detection';
+import * as tf from '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-webgl';
 import { toast } from 'sonner';
 
 interface EmotionDetectorProps {
@@ -18,7 +21,7 @@ const EmotionDetector: React.FC<EmotionDetectorProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isTfModelLoaded, setIsTfModelLoaded] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
-  const modelRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
+  const modelRef = useRef<faceDetection.FaceDetector | null>(null);
   const useMockDetection = useRef(true);
   
   // Load TensorFlow.js model
@@ -26,17 +29,21 @@ const EmotionDetector: React.FC<EmotionDetectorProps> = ({
     const loadModel = async () => {
       try {
         setIsLoading(true);
-        const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+        // Set the backend to WebGL for better performance
+        await tf.setBackend('webgl');
+        
+        // Initialize the face detection model
+        const model = faceDetection.SupportedModels.MediaPipeFaceDetector;
         const detectorConfig = {
-          runtime: 'mediapipe',
-          solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
-          refineLandmarks: true,
+          runtime: 'tfjs', // Use tfjs runtime
+          modelType: 'short', // Use the lightweight model for better performance
+          maxFaces: 1, // We only need to detect one face
         };
         
         // Load the model
-        modelRef.current = await faceLandmarksDetection.createDetector(
+        modelRef.current = await faceDetection.createDetector(
           model, 
-          detectorConfig as any
+          detectorConfig
         );
         
         setIsTfModelLoaded(true);
@@ -83,7 +90,7 @@ const EmotionDetector: React.FC<EmotionDetectorProps> = ({
           if (ctx) {
             ctx.putImageData(imageData, 0, 0);
             
-            // Get face landmarks
+            // Get face detections
             const faces = await modelRef.current.estimateFaces(canvas);
             
             if (faces && faces.length > 0) {
@@ -98,47 +105,70 @@ const EmotionDetector: React.FC<EmotionDetectorProps> = ({
                 height: box.height
               };
               
-              // Simple algorithm to determine emotion from face landmarks
+              // Simple algorithm to determine emotion from face properties
               // This is a simplified approach - in a real app, you would use a more sophisticated model
               const face = faces[0];
               
-              // Analyze facial features to determine emotion
-              // This is a very simplified algorithm, you would want to use a proper emotion classifier
-              if (face.keypoints) {
-                const mouthPoints = face.keypoints.filter(kp => 
-                  kp.name && kp.name.toLowerCase().includes('mouth')
-                );
-                const eyePoints = face.keypoints.filter(kp => 
-                  kp.name && kp.name.toLowerCase().includes('eye')
-                );
+              // A very simple heuristic for demonstration purposes
+              // In reality, you would use a proper emotion classifier
+              const keypointsAvailable = face.keypoints && face.keypoints.length > 0;
+              
+              if (keypointsAvailable) {
+                // Find relative positions of key facial features
+                const rightEye = face.keypoints.find(kp => kp.name === 'rightEye');
+                const leftEye = face.keypoints.find(kp => kp.name === 'leftEye');
+                const nose = face.keypoints.find(kp => kp.name === 'noseTip');
+                const mouth = face.keypoints.find(kp => kp.name === 'mouth');
                 
-                if (mouthPoints.length > 0 && eyePoints.length > 0) {
-                  // Simple emotion detection based on mouth and eye positions
-                  // This is very simplified and not accurate - just for demonstration
-                  const mouthWidth = Math.max(...mouthPoints.map(p => p.x)) - 
-                                    Math.min(...mouthPoints.map(p => p.x));
-                  const eyeHeight = Math.max(...eyePoints.map(p => p.y)) - 
-                                  Math.min(...eyePoints.map(p => p.y));
+                if (rightEye && leftEye && nose && mouth) {
+                  // Measure distance between features to detect emotional state
+                  // This is a very basic approach for demonstration
                   
-                  const mouthHeightDiff = Math.max(...mouthPoints.map(p => p.y)) - 
-                                        Math.min(...mouthPoints.map(p => p.y));
+                  // Calculate eye-to-mouth distance (for smile detection)
+                  const eyeY = (rightEye.y + leftEye.y) / 2;
+                  const mouthToEyeDistance = mouth.y - eyeY;
+                  const faceHeight = box.height;
+                  const mouthRatio = mouthToEyeDistance / faceHeight;
+                  
+                  // Eye width/height ratio for surprise
+                  const eyeDistance = Math.abs(rightEye.x - leftEye.x);
+                  const eyeToFaceRatio = eyeDistance / box.width;
                   
                   // Very basic heuristic - not accurate
-                  if (mouthHeightDiff > 15 && mouthWidth > 30) {
+                  if (mouthRatio > 0.4) {
                     detectedEmotion = 'happy';
-                  } else if (eyeHeight > 10 && mouthWidth < 25) {
+                  } else if (eyeToFaceRatio > 0.3) {
                     detectedEmotion = 'surprised';
-                  } else if (mouthHeightDiff < 5) {
-                    detectedEmotion = 'angry';
+                  } else if (mouthRatio < 0.35) {
+                    detectedEmotion = 'sad';
                   } else {
-                    detectedEmotion = 'neutral';
+                    // Add some randomness between emotions for demo purposes
+                    const random = Math.random();
+                    if (random < 0.5) {
+                      detectedEmotion = 'neutral';
+                    } else if (random < 0.7) {
+                      detectedEmotion = 'angry';
+                    } else if (random < 0.9) {
+                      detectedEmotion = 'fear';
+                    } else {
+                      detectedEmotion = 'disgust';
+                    }
                   }
                 } else {
                   detectedEmotion = 'neutral';
                 }
               } else {
-                // Fallback to mock if face detected but no keypoints
-                detectedEmotion = mockDetectEmotion();
+                // If no keypoints are available, use a simpler approach
+                // based on the detected face dimensions
+                const aspectRatio = box.width / box.height;
+                
+                if (aspectRatio > 0.9) {
+                  detectedEmotion = 'happy';
+                } else if (aspectRatio < 0.7) {
+                  detectedEmotion = 'surprised';
+                } else {
+                  detectedEmotion = 'neutral';
+                }
               }
             } else {
               // No face detected
