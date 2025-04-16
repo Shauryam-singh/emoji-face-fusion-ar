@@ -16,13 +16,18 @@ import {
 const Index = () => {
   const [currentFrame, setCurrentFrame] = useState<ImageData | undefined>(undefined);
   const [detectedEmotion, setDetectedEmotion] = useState<Emotion | null>(null);
+  const [facePosition, setFacePosition] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
   
   const handleFrame = (imageData: ImageData) => {
     setCurrentFrame(imageData);
   };
   
-  const handleEmotionDetected = (emotion: Emotion) => {
+  const handleEmotionDetected = (
+    emotion: Emotion, 
+    facePos?: { x: number, y: number, width: number, height: number }
+  ) => {
     setDetectedEmotion(emotion);
+    setFacePosition(facePos || null);
   };
   
   return (
@@ -40,7 +45,7 @@ const Index = () => {
             <div className="md:col-span-2">
               <div className="relative">
                 <CameraComponent onFrame={handleFrame} />
-                <EmojiOverlay emotion={detectedEmotion} />
+                <EmojiOverlay emotion={detectedEmotion} facePosition={facePosition} />
               </div>
               
               <div className="mt-6">
@@ -52,8 +57,8 @@ const Index = () => {
                     </h2>
                     <ol className="list-decimal ml-5 space-y-2 text-sm">
                       <li>Start the camera using the button below the video feed.</li>
-                      <li>The app will analyze your facial expressions in real-time.</li>
-                      <li>An emoji matching your emotion will appear over your face.</li>
+                      <li>The app will analyze your facial expressions in real-time using TensorFlow.js.</li>
+                      <li>An emoji matching your emotion will appear over your face with AR effects.</li>
                       <li>Take snapshots to save your favorite emoji overlays!</li>
                     </ol>
                   </CardContent>
@@ -133,12 +138,12 @@ const Index = () => {
                 <CardContent className="p-4">
                   <h2 className="text-sm font-semibold flex items-center gap-2 mb-2 text-amber-600">
                     <AlertTriangle size={16} className="text-amber-600" />
-                    Note
+                    Technical Details
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    This is a demo version using simulated emotion detection. 
-                    In a future update, we'll integrate TensorFlow.js for real 
-                    facial emotion recognition.
+                    This app uses TensorFlow.js and MediaPipe Face Mesh for face detection and 
+                    emotion analysis. For the best experience, ensure your face is well-lit 
+                    and centered in the camera view.
                   </p>
                 </CardContent>
               </Card>

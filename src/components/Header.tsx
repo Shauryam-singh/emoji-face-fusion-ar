@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Smile } from 'lucide-react';
+import { Smile, Github } from 'lucide-react';
 
 const Header: React.FC = () => {
   return (
@@ -16,9 +16,10 @@ const Header: React.FC = () => {
           href="https://github.com" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-sm text-muted-foreground hover:text-primary transition-colors"
+          className="text-sm flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
         >
-          GitHub
+          <Github size={16} />
+          <span className="hidden sm:inline">GitHub</span>
         </a>
       </div>
     </header>
